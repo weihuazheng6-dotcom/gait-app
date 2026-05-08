@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../models/gait_data.dart'; // <--- 新增导入
 import '../services/ble_manager.dart';
 import '../services/csv_export.dart';
 import 'scan_screen.dart';
@@ -21,7 +22,7 @@ class HomeScreen extends StatelessWidget {
             const SizedBox(height: 16),
             _buildRealtimeData(ble),
             const Spacer(),
-            _buildBottomControls(ble),
+            _buildBottomControls(context, ble), // <--- 传入 context
           ],
         ),
       ),
@@ -87,7 +88,8 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildBottomControls(BLEManager ble) {
+  // <--- 修改：添加 BuildContext context 参数
+  Widget _buildBottomControls(BuildContext context, BLEManager ble) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -95,7 +97,7 @@ class HomeScreen extends StatelessWidget {
           children: [
             Expanded(
               child: ElevatedButton(
-                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: _ => const ScanScreen())),
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ScanScreen())),
                 style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1565C0), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
                 child: const Text("扫描连接", style: TextStyle(fontSize: 16)),
               ),
