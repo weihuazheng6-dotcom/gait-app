@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.gait.detector"
-    compileSdkVersion 34
+    compileSdk 34
     ndkVersion flutter.ndkVersion
 
     compileOptions {
@@ -18,26 +18,23 @@ android {
         jvmTarget = '17'
     }
 
-    sourceSets {
-        main.java.srcDirs += 'src/main/kotlin'
-    }
-
     defaultConfig {
         applicationId "com.gait.detector"
-        minSdkVersion 21
-        targetSdkVersion 34
+        minSdk 21
+        targetSdk 34
         versionCode 1
         versionName "1.0.0"
-        multiDexEnabled true
     }
 
-        buildTypes {
+    buildTypes {
         release {
-            // 为了简单起见，先关闭所有优化，确保能构建成功
             signingConfig signingConfigs.debug
             minifyEnabled false
             shrinkResources false
         }
     }
+}
 
+flutter {
+    source '../..'
 }
