@@ -4,10 +4,10 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:permission_handler/permission_handler.dart'; // <--- 新增导入
 import '../models/gait_data.dart';
 import 'package:uuid/uuid.dart';
 
-/// 蓝牙管理器：负责设备扫描、连接、角色分配、数据解析与录制控制
 class BLEManager extends ChangeNotifier {
   // ================= 全局状态 =================
   bool isScanning = false;
@@ -33,12 +33,12 @@ class BLEManager extends ChangeNotifier {
   final Duration _pollInterval = const Duration(milliseconds: 100);
   final _uuidGen = const Uuid();
 
-  // ================= BLE 常量定义 =================
+  // ================= BLE 常量定义 (去掉 const) =================
   static const String SvcPressure = "FFE0";
   static const String CharPressureNotify = "FFE1";
-  static const Guid SvcIMU = Guid("0000FFE5-0000-1000-8000-00805F9A34FB");
-  static const Guid CharIMUNotify = Guid("0000FFE4-0000-1000-8000-00805F9A34FB");
-  static const Guid CharIMUWrite = Guid("0000FFE9-0000-1000-8000-00805F9A34FB");
+  static final Guid SvcIMU = Guid("0000FFE5-0000-1000-8000-00805F9A34FB");
+  static final Guid CharIMUNotify = Guid("0000FFE4-0000-1000-8000-00805F9A34FB");
+  static final Guid CharIMUWrite = Guid("0000FFE9-0000-1000-8000-00805F9A34FB");
 
   // ================= 跨包数据缓冲 =================
   final Map<DeviceIdentifier, List<int>> _imuBuffers = {};
@@ -61,6 +61,7 @@ class BLEManager extends ChangeNotifier {
   // ================= 权限请求 =================
   Future<void> requestPermissions() async {
     try {
+      // 使用 Permission 类的静态属性
       await [
         Permission.bluetoothScan,
         Permission.bluetoothConnect,
@@ -134,7 +135,6 @@ class BLEManager extends ChangeNotifier {
       await device.connect(timeout: const Duration(seconds: 15));
       _isConnected[devId] = true;
       
-      // 监听断开连接
       device.state.listen((state) {
         if (state == BluetoothDeviceState.disconnected) {
           _isConnected[devId] = false;
@@ -211,7 +211,7 @@ class BLEManager extends ChangeNotifier {
     _imuPollTimer = Timer.periodic(_pollInterval, (timer) async {
       for (var role in DeviceRole.values.where((r) => r.name.contains("IMU"))) {
         final dev = roleAssignments[role];
-        if (dev == null || !_isConnected[dev.remoteId]!) continue;
+        if (dev == null || _isConnected[dev.remoteId] != true) continue;
         await _readIMUCharacteristic(dev, role);
       }
     });
@@ -224,19 +224,20 @@ class BLEManager extends ChangeNotifier {
       BluetoothCharacteristic? char;
       for (var svc in services) {
         if (svc.uuid == SvcIMU) {
+          // 修复：不再使用 orElse 创建假对象，直接查找
           char = svc.characteristics.firstWhere(
             (c) => c.uuid == CharIMUNotify,
-            orElse: () => BluetoothCharacteristic(characteristicUuid: Guid("")),
+            orElse: () => null, 
           );
           break;
         }
       }
-      if (char != null && char.characteristicUuid != Guid("")) {
+      if (char != null) {
         final bytes = await char.read();
         if (bytes.isNotEmpty) _processIMUData(bytes, role, device.remoteId);
       }
     } catch (e) {
-      // 轮询失败静默处理，避免阻塞主循环
+      // 轮询失败静默处理
     }
   }
 
@@ -257,7 +258,8 @@ class BLEManager extends ChangeNotifier {
   }
 
   void _parseIMUFrame(List<int> frame, DeviceRole role) {
-    int16 read16(int index) => (frame[index] | (frame[index + 1] << 8)).toSigned(16);
+    // 修复：int16 改为 int
+    int read16(int index) => (frame[index] | (frame[index + 1] << 8)).toSigned(16);
 
     final accX = read16(2) / 32768.0 * 16.0;
     final accY = read16(4) / 32768.0 * 16.0;
