@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/gait_data.dart';
+import '../models/gait_data.dart'; // <--- 新增导入
 import '../services/ble_manager.dart';
 
 class ScanScreen extends StatelessWidget {
@@ -39,7 +39,8 @@ class ScanScreen extends StatelessWidget {
                   margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   child: ListTile(
                     leading: const Icon(Icons.bluetooth, color: Color(0xFF1565C0)),
-                    title: Text(dev.platformName.isNotEmpty ? dev.platformName : "Unknown Device", style: const TextStyle(fontSize: 16)),
+                    // <--- 修正：使用 dev.device.platformName
+                    title: Text(dev.device.platformName.isNotEmpty ? dev.device.platformName : "Unknown Device", style: const TextStyle(fontSize: 16)),
                     subtitle: Text("${dev.device.remoteId.str} | RSSI: ${dev.rssi}dBm", style: const TextStyle(fontSize: 14)),
                     trailing: IconButton(
                       icon: const Icon(Icons.link, color: Color(0xFF1565C0)),
