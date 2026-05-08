@@ -4,7 +4,7 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
-import 'package:permission_handler/permission_handler.dart'; // <--- 新增导入
+import 'package:permission_handler/permission_handler.dart';
 import '../models/gait_data.dart';
 import 'package:uuid/uuid.dart';
 
@@ -33,7 +33,7 @@ class BLEManager extends ChangeNotifier {
   final Duration _pollInterval = const Duration(milliseconds: 100);
   final _uuidGen = const Uuid();
 
-  // ================= BLE 常量定义 (去掉 const) =================
+  // ================= BLE 常量定义 =================
   static const String SvcPressure = "FFE0";
   static const String CharPressureNotify = "FFE1";
   static final Guid SvcIMU = Guid("0000FFE5-0000-1000-8000-00805F9A34FB");
@@ -61,7 +61,6 @@ class BLEManager extends ChangeNotifier {
   // ================= 权限请求 =================
   Future<void> requestPermissions() async {
     try {
-      // 使用 Permission 类的静态属性
       await [
         Permission.bluetoothScan,
         Permission.bluetoothConnect,
@@ -218,20 +217,25 @@ class BLEManager extends ChangeNotifier {
     _log("Global IMU polling started at 10Hz");
   }
 
+  // ================= 修正了此处，不再返回 null =================
   Future<void> _readIMUCharacteristic(BluetoothDevice device, DeviceRole role) async {
     try {
       final services = await device.discoverServices();
       BluetoothCharacteristic? char;
+      
       for (var svc in services) {
         if (svc.uuid == SvcIMU) {
-          // 修复：不再使用 orElse 创建假对象，直接查找
-          char = svc.characteristics.firstWhere(
-            (c) => c.uuid == CharIMUNotify,
-            orElse: () => null, 
-          );
-          break;
+          // 使用手动循环查找，避免 firstWhere 类型不匹配问题
+          for (var c in svc.characteristics) {
+            if (c.uuid == CharIMUNotify) {
+              char = c;
+              break;
+            }
+          }
+          if (char != null) break;
         }
       }
+
       if (char != null) {
         final bytes = await char.read();
         if (bytes.isNotEmpty) _processIMUData(bytes, role, device.remoteId);
@@ -258,7 +262,6 @@ class BLEManager extends ChangeNotifier {
   }
 
   void _parseIMUFrame(List<int> frame, DeviceRole role) {
-    // 修复：int16 改为 int
     int read16(int index) => (frame[index] | (frame[index + 1] << 8)).toSigned(16);
 
     final accX = read16(2) / 32768.0 * 16.0;
